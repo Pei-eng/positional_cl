@@ -15,9 +15,12 @@ def generate_chd_dataset(data_dir, labeled_save_dir, unlabeled_save_dir):
             image = sitk.ReadImage(image_path)
             label = sitk.ReadImage(label_path)
             # print(f'image spacing:{image.GetSpacing()}')
+            
+            # 將影像和標記轉換為NumPy數組
             image_npy = sitk.GetArrayViewFromImage(image)
             label_npy = sitk.GetArrayViewFromImage(label)
-            # convert label
+            
+            # 影像數據標準化和篩選標記數據
             image_npy_copy = image_npy.copy()
             min_val_1p=np.percentile(image_npy_copy,1)
             max_val_99p=np.percentile(image_npy_copy,99)
@@ -26,7 +29,9 @@ def generate_chd_dataset(data_dir, labeled_save_dir, unlabeled_save_dir):
             mean = image_npy_copy.astype(float).mean()
             std = image_npy_copy.astype(float).std()
             label_npy_copy = label_npy.copy()
-            label_npy_copy[label_npy_copy>7]=0
+            label_npy_copy[label_npy_copy>7]=0 # 將標記數據中大於7的部分設為0，可能是為了移除不需要的標籤
+
+            # 存儲統計數據
             results['ct_'+str(i)] = {}
             results['ct_'+str(i)]['mean'] = mean
             results['ct_'+str(i)]['std'] = std
@@ -34,6 +39,8 @@ def generate_chd_dataset(data_dir, labeled_save_dir, unlabeled_save_dir):
             # we save the integer version instead of float version to save space. normalization is done on-the-fly.
             # we save one labeled version and one unlabeled version, maybe not the best solution, but ok.
             # you can also add new unlabeled CT data into the unlabeled dataset for contrastive learning.
+
+            # 儲存影像和標記數據
             for j in range(image_npy.shape[0]):
                 tmp_image = image_npy_copy[j,:,:]
                 tmp_label = label_npy_copy[j,:,:]
@@ -44,6 +51,7 @@ def generate_chd_dataset(data_dir, labeled_save_dir, unlabeled_save_dir):
                 maybe_mkdir_p(os.path.join(unlabeled_save_dir, 'train', 'ct_'+str(i)))
                 save_path_image = os.path.join(unlabeled_save_dir, 'train', 'ct_'+str(i), 'frame'+str.format('%03d'%j))
                 np.save(save_path_image, tmp_image)
+                
     with open(os.path.join(labeled_save_dir, "mean_std.pkl"), 'wb') as f:
         pickle.dump(results, f)
 
